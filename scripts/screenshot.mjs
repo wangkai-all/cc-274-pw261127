@@ -1,0 +1,38 @@
+import { chromium } from 'playwright-core';
+import { createApp } from '../src/server.js';
+const server = createApp({ dbPath: ':memory:', replayRate: 4000, chunkSize: 30 });
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const base = `http://127.0.0.1:${server.address().port}`;
+const b = await chromium.launch({ executablePath: '/tmp/pw-browsers/chromium_headless_shell-1255/chrome-headless-shell-linux64/chrome-headless-shell', args: ['--no-sandbox'] });
+const p = await b.newPage({ viewport: { width: 1460, height: 1100 } });
+p.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+await p.goto(base, { waitUntil: 'networkidle' });
+for (let i = 0; i < 8; i++) { await p.click('#sim-step'); await p.waitForTimeout(80); }
+await p.click('.tab[data-view="rules"]');
+await p.waitForSelector('.version.selected');
+await p.click('#new-draft');
+await p.waitForTimeout(600);
+await p.fill('#ed-group', 'lower(region)');
+await p.waitForTimeout(2200);
+await p.screenshot({ path: '/tmp/console-rules.png', fullPage: true });
+// publish shadow with legacy executor running
+await p.click('.tab[data-view="overview"]');
+await p.click('#legacy-launch');
+await p.click('.tab[data-view="rules"]');
+await p.click('#publish-shadow');
+await p.waitForTimeout(900);
+await p.click('.tab[data-view="overview"]');
+await p.waitForTimeout(1200);
+await p.screenshot({ path: '/tmp/console-rebuild.png', fullPage: true });
+await p.waitForTimeout(4000);
+await p.screenshot({ path: '/tmp/console-after.png', fullPage: true });
+await p.click('.tab[data-view="results"]');
+await p.waitForTimeout(1200);
+await p.screenshot({ path: '/tmp/console-results.png', fullPage: true });
+await p.click('.tab[data-view="timeline"]');
+await p.waitForTimeout(600);
+await p.click('#verify-btn');
+await p.waitForTimeout(1500);
+await p.screenshot({ path: '/tmp/console-timeline.png', fullPage: true });
+await b.close(); server.closeDb(); server.close();
+console.log('shots done');

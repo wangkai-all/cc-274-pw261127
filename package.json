@@ -1,0 +1,20 @@
+{
+  "name": "driftfield",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Expression-driven streaming aggregation with rule migration, dual-context rebuilds, and an operator console.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node scripts/seed.js",
+    "test": "node --test \"test/*.test.js\"",
+    "test:ui": "node test/ui.e2e.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.1"
+  }
+}

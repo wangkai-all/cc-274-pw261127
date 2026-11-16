@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Driftfield · 流式规则迁移控制台</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <div>
+          <h1>Driftfield</h1>
+          <p>流式聚合规则迁移与切换控制台</p>
+        </div>
+      </div>
+      <div class="topbar-status" id="topbar-status" aria-live="polite">
+        <span class="pill pill-muted">连接中…</span>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="主导航">
+      <button class="tab" role="tab" id="tab-overview" data-view="overview" aria-controls="view-overview" aria-selected="true">总览</button>
+      <button class="tab" role="tab" id="tab-rules" data-view="rules" aria-controls="view-rules" aria-selected="false">规则与迁移</button>
+      <button class="tab" role="tab" id="tab-results" data-view="results" aria-controls="view-results" aria-selected="false">结果与逐条判定</button>
+      <button class="tab" role="tab" id="tab-timeline" data-view="timeline" aria-controls="view-timeline" aria-selected="false">时间线与核对</button>
+      <button class="tab" role="tab" id="tab-help" data-view="help" aria-controls="view-help" aria-selected="false">语法参考</button>
+    </nav>
+
+    <main id="app">
+      <section class="view" role="tabpanel" id="view-overview" aria-labelledby="tab-overview" data-title="总览">
+        <div class="grid grid-hero">
+          <article class="card card-active">
+            <div class="card-head">
+              <h2>当前执行器</h2>
+              <span class="pill pill-live" id="live-pill">活动</span>
+            </div>
+            <div id="active-summary" class="stack"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>处理计数</h2>
+              <span class="hint">本轮执行器</span>
+            </div>
+            <div id="counters" class="metric-grid"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>数据与告警</h2>
+            </div>
+            <div id="counts" class="metric-grid"></div>
+          </article>
+        </div>
+
+        <div class="grid grid-2">
+          <article class="card">
+            <div class="card-head">
+              <h2>模拟数据源</h2>
+              <span class="hint">写入走真实的带凭据入口</span>
+            </div>
+            <div class="control-row">
+              <button class="btn btn-primary" id="sim-start">开始产生事件</button>
+              <button class="btn" id="sim-stop">停止</button>
+              <button class="btn" id="sim-step">追加一批</button>
+              <label class="field-inline">
+                速率
+                <select id="sim-tick">
+                  <option value="1600">慢</option>
+                  <option value="800" selected>中</option>
+                  <option value="300">快</option>
+                </select>
+              </label>
+            </div>
+            <div class="control-row">
+              <button class="btn" id="legacy-launch">启动旧执行器</button>
+              <span class="hint" id="legacy-hint">旧执行器会一直用启动时的凭据上报，用于验证过期上报不会混入当前结果。</span>
+            </div>
+            <div id="sim-status" class="stack stack-tight"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h2>执行器控制</h2>
+            </div>
+            <div class="control-row">
+              <button class="btn" id="pause-btn">暂停接收</button>
+              <button class="btn" id="resume-btn">恢复接收</button>
+            </div>
+            <p class="muted" id="pause-hint">暂停会让上报凭据失效；被拒绝的事件不会进入原始数据，需要重提。</p>
+            <div id="pause-status" class="stack stack-tight"></div>
+          </article>
+        </div>
+
+        <div class="grid grid-2">
+          <article class="card">
+            <div class="card-head">
+              <h2>活动重建任务</h2>
+              <span class="hint" id="jobs-hint"></span>
+            </div>
+            <div id="jobs"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>最近被拒绝的上报</h2>
+            </div>
+            <div id="stale-list" class="list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" role="tabpanel" id="view-rules" aria-labelledby="tab-rules" hidden>
+        <div class="grid grid-rules">
+          <article class="card">
+            <div class="card-head">
+              <h2>规则版本</h2>
+              <button class="btn btn-small" id="new-draft">新建草稿</button>
+            </div>
+            <div id="version-list" class="version-list"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h2 id="editor-title">编辑器</h2>
+              <span class="pill" id="editor-status">未选择</span>
+            </div>
+            <div id="editor" class="stack"></div>
+          </article>
+        </div>
+
+        <article class="card" id="change-card">
+          <div class="card-head">
+            <h2>变更分类与影响预览</h2>
+            <span class="hint">预览只读，不触碰线上状态</span>
+          </div>
+          <div id="change-summary" class="stack"></div>
+          <div id="preview" class="stack"></div>
+        </article>
+      </section>
+
+      <section class="view" role="tabpanel" id="view-results" aria-labelledby="tab-results" hidden>
+        <div class="grid grid-2">
+          <article class="card">
+            <div class="card-head">
+              <h2>已关闭窗口结果</h2>
+              <div class="control-row control-row-tight">
+                <label class="field-inline">epoch <input id="results-epoch" type="number" min="1" placeholder="活动" /></label>
+                <button class="btn btn-small" id="results-refresh">刷新</button>
+              </div>
+            </div>
+            <div id="results-table" class="table-wrap"></div>
+            <div id="results-pager" class="control-row"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>开放窗口</h2>
+              <span class="hint">尚未越过水位线，不计入最终结果</span>
+            </div>
+            <div id="open-table" class="table-wrap"></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-head">
+            <h2>逐条事件采用情况</h2>
+            <div class="control-row control-row-tight">
+              <label class="field-inline">epoch <input id="adj-epoch" type="number" min="1" placeholder="活动" /></label>
+              <label class="field-inline">判定
+                <select id="adj-outcome">
+                  <option value="">全部</option>
+                  <option value="accepted">计入</option>
+                  <option value="filtered">被过滤</option>
+                  <option value="duplicate">重复</option>
+                  <option value="late">迟到</option>
+                  <option value="invalid-group">分组为空</option>
+                  <option value="invalid-dedup">去重为空</option>
+                </select>
+              </label>
+              <button class="btn btn-small" id="adj-refresh">刷新</button>
+            </div>
+          </div>
+          <div id="adj-table" class="table-wrap"></div>
+          <div id="adj-pager" class="control-row"></div>
+        </article>
+      </section>
+
+      <section class="view" role="tabpanel" id="view-timeline" aria-labelledby="tab-timeline" hidden>
+        <div class="grid grid-2">
+          <article class="card">
+            <div class="card-head">
+              <h2>全量基准核对</h2>
+              <button class="btn btn-primary" id="verify-btn">运行核对</button>
+            </div>
+            <div id="verify-result" class="stack"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>版本谱系</h2>
+            </div>
+            <div id="lineage" class="list"></div>
+          </article>
+        </div>
+        <article class="card">
+          <div class="card-head"><h2>epoch 时间线</h2><span class="hint">每种执行器状态与重建记录</span></div>
+          <div id="epoch-timeline" class="timeline"></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h2>操作审计</h2></div>
+          <div id="audit" class="table-wrap"></div>
+        </article>
+      </section>
+
+      <section class="view" role="tabpanel" id="view-help" aria-labelledby="tab-help" hidden>
+        <article class="card">
+          <div class="card-head"><h2>可用字段</h2></div>
+          <div id="help-fields" class="table-wrap"></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h2>函数与语法边界</h2></div>
+          <div id="help-functions" class="stack"></div>
+        </article>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
